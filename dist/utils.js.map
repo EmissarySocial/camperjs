@@ -1,7 +1,7 @@
 {
   "version": 3,
   "sources": ["../src/utils.ts"],
-  "sourcesContent": ["// guessProtocol is a helper function to guess the correct protocol \n// to use (http or https) based on the server name\nexport function guessProtocol(server: string) {\n\n\tswitch (server) {\n\t\tcase \"localhost\":\n\t\tcase \"127.0.0.1\":\n\t\t\treturn \"http://\"\n\t}\n\n\treturn \"https://\"\n}\n"],
-  "mappings": ";;;AAEO,WAAS,cAAc,QAAgB;AAE7C,YAAQ,QAAQ;AAAA,MACf,KAAK;AAAA,MACL,KAAK;AACJ,eAAO;AAAA,IACT;AAEA,WAAO;AAAA,EACR;",
+  "sourcesContent": ["// guessProtocol is a helper function to guess the correct protocol \n// to use (http or https) based on the server name\nexport function guessProtocol(server: string) {\n\n\tswitch (server) {\n\t\tcase \"localhost\":\n\t\tcase \"127.0.0.1\":\n\t\t\treturn \"http://\"\n\t}\n\n\treturn \"https://\"\n}\n\nexport function getPlaceholders(template: string) {\n\tconst matches = template.match(/\\{([^}]+)\\}/g) || []\n\treturn matches.map(placeholder => placeholder.slice(1, -1))\n}\n"],
+  "mappings": ";AAEO,SAAS,cAAc,QAAgB;AAE7C,UAAQ,QAAQ;AAAA,IACf,KAAK;AAAA,IACL,KAAK;AACJ,aAAO;AAAA,EACT;AAEA,SAAO;AACR;AAEO,SAAS,gBAAgB,UAAkB;AACjD,QAAM,UAAU,SAAS,MAAM,cAAc,KAAK,CAAC;AACnD,SAAO,QAAQ,IAAI,iBAAe,YAAY,MAAM,GAAG,EAAE,CAAC;AAC3D;",
   "names": []
 }

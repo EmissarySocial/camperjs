@@ -2,6 +2,7 @@ import { type WebFingerResult } from "./types"
 import { type IntentsResult } from "./types"
 import { WebFinger } from "./webfinger"
 import { NodeInfo } from "./nodeinfo"
+import { Intents } from "./intents"
 import { Actor } from "./as/actor"
 
 type Account = {
@@ -18,6 +19,10 @@ const Camper = {
 	render: () => {
 
 		const accounts = Camper.getSavedAccounts()
+
+		// Hide "Loading" indicators
+		const loadingIndicators = Array.from(document.getElementsByClassName("camper-loading")) as HTMLElement[]
+		loadingIndicators.forEach(element => element.hidden = true);
 
 		// Show/Hide the "Add Account" 
 		const addAccountButtons = Array.from(document.getElementsByClassName("camper-add-account")) as HTMLElement[]
@@ -118,11 +123,20 @@ const Camper = {
 			intentTemplate = intentTemplate.replaceAll("{" + placeholder + "}", value)
 		}
 
+		if (intentTemplate = "") {
+			alert("The account you selected does not support this action.")
+			return
+		}
+
 		window.open(intentTemplate, "_blank", "height=750,width=600")
 	},
 
 	// addAccount adds a new account to the list and redraws the UX
 	addAccount: async (username: string) => {
+
+		// Show "Loading" indicators
+		const loadingIndicators = Array.from(document.getElementsByClassName("camper-loading")) as HTMLElement[]
+		loadingIndicators.forEach(element => element.hidden = false);
 
 		// Look up the WebFinger metadata for the provided username
 		const webfingerResult = await WebFinger.getMetadata(username)
@@ -159,7 +173,7 @@ const Camper = {
 			username: username,
 			name: activityPubActor.name(),
 			iconUrl: activityPubActor.icon(),
-			intents: await Camper.getIntentsMap(actorId, webfingerResult),
+			intents: await Intents.getIntentsMap(actorId, webfingerResult),
 		})
 
 		// Save the updated account list to localStorage
@@ -194,135 +208,6 @@ const Camper = {
 
 		// Redraw the UX
 		Camper.render()
-	},
-
-	// getIntentsMap retrieves the available Activity Intents templates for the provided data
-	getIntentsMap: async (server: string, webfingerResult: WebFingerResult) => {
-
-		var found = false
-		var result: IntentsResult = {
-			announce: "",
-			create: "",
-			follow: "",
-			like: "",
-			object: ""
-		}
-
-		// Safely find the array of links
-		const links = webfingerResult.links || []
-
-		// Scan each link for known intents
-		for (const link of links) {
-
-			var relation = link.rel || ""
-			var template = link.template || link.href || ""
-
-			switch (relation.toLowerCase()) {
-
-				case "https://w3id.org/fep/3b86/announce":
-					result.announce = template
-					found = true;
-					continue
-
-				case "https://w3id.org/fep/3b86/create":
-					result.create = template
-					found = true;
-					continue
-
-				case "https://w3id.org/fep/3b86/follow":
-					result.follow = template
-					found = true;
-					continue
-
-				case "https://w3id.org/fep/3b86/like":
-					result.like = template
-					found = true;
-					continue
-
-				case "https://w3id.org/fep/3b86/object":
-					result.object = template
-					found = true
-					continue
-
-				case "http://ostatus.org/schema/1.0/subscribe":
-				case "https://ostatus.org/schema/1.0/subscribe":
-
-					// Special case to map OStatus "remote follows" into the `Follow` intent
-					if (result.follow == "") {
-						result.follow = template.replaceAll("{uri}", "{object}")
-					}
-					continue
-			}
-		}
-
-		// If the server returns Activity Intents templates, then use them
-		if (found) {
-
-			if (result.follow == "") {
-				result.follow = result.object
-			}
-
-			if (result.like == "") {
-				result.like = result.object
-			}
-
-			if (result.announce == "") {
-				result.announce = result.object
-			}
-
-			return result
-		}
-
-		// Otherwise, try to sniff the server for known endpoints
-		const softwareName = await NodeInfo.getSoftwareName(server)
-
-		// If we can recognize the software, then fill in known endpoints
-		switch (softwareName.toLowerCase()) {
-
-			case "diaspora":
-				result.create = server + "/bookmarklet?title={name}&notes={content}&url={inReplyTo}"
-				break
-
-			case "friendica":
-				result.create = server + "/compose?title={name}&body={content}"
-				break
-
-			case "glitchcafe":
-				result.create = server + "/share?text={content}"
-				break
-
-			case "gnusocial":
-				result.create = server + "/notice/new?status_textarea={content}"
-				break
-
-				result.create = server + "/share?text={content}"
-				break
-
-			case "hubzilla":
-				result.create = server + "/rpost?title={name}&body={content}"
-				break
-
-			case "mastodon":
-			case "hometown":
-				result.create = server + "/share?text={content}"
-				result.object = server + "/authorize_interaction?uri={object}"
-				break
-
-			case "misskey":
-			case "calckey":
-			case "fedibird":
-			case "firefish":
-			case "foundkey":
-			case "meisskey":
-				result.create = server + "/share?text={content}"
-				break
-
-			case "microdotblog":
-				result.create = server + "/post?text=[{name}]({inReplyTo})%0A%0A{content}"
-				break
-		}
-
-		return result
 	},
 
 	// hasSavedAccounts returns TRUE if there is one or more accounts saved in localStorage
