@@ -1,0 +1,19 @@
+{
+	"name": "camper.js",
+	"version": "1.0.0",
+	"description": "",
+	"license": "AGPL-3.0-only",
+	"author": "Ben Pate",
+	"type": "module",
+	"main": "camper.js",
+	"scripts": {
+		"start": "esbuild src/*.ts --watch --bundle --format=esm --sourcemap --outdir=./dist",
+		"develop": "esbuild src/*.ts --watch --bundle --format=esm --sourcemap --outdir=../emissary/_embed/templates/theme-global/resources/camperjs",
+		"test": "vitest"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"esbuild": "^0.27.3",
+		"vitest": "^4.0"
+	}
+}

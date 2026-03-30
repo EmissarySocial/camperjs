@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/utils.ts"],
+  "sourcesContent": ["// guessProtocol is a helper function to guess the correct protocol \n// to use (http or https) based on the server name\nexport function guessProtocol(server: string) {\n\n\tswitch (server) {\n\t\tcase \"localhost\":\n\t\tcase \"127.0.0.1\":\n\t\t\treturn \"http://\"\n\t}\n\n\treturn \"https://\"\n}\n"],
+  "mappings": ";;;AAEO,WAAS,cAAc,QAAgB;AAE7C,YAAQ,QAAQ;AAAA,MACf,KAAK;AAAA,MACL,KAAK;AACJ,eAAO;AAAA,IACT;AAEA,WAAO;AAAA,EACR;",
+  "names": []
+}
