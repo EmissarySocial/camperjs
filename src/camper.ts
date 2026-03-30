@@ -192,6 +192,9 @@ const Camper = {
 	// removeAccount removes an account from the list and redraws the UX
 	removeAccount: (username: string) => {
 
+		window.event!.stopPropagation()
+		window.event!.preventDefault()
+
 		// Confirm the action before continuing
 		if (!confirm('Remove this account from this device?')) {
 			return
