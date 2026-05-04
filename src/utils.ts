@@ -15,3 +15,14 @@ export function getPlaceholders(template: string) {
 	const matches = template.match(/\{([^}]+)\}/g) || []
 	return matches.map(placeholder => placeholder.slice(1, -1))
 }
+
+
+export function hideElement(element: HTMLElement, hide: boolean) {
+	if (hide) {
+		element.hidden = true
+		element.style.display = "none"
+	} else {
+		element.hidden = false
+		element.style.display = ""
+	}
+}

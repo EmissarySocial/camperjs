@@ -1,9 +1,8 @@
-import { type WebFingerResult } from "./types"
 import { type IntentsResult } from "./types"
 import { WebFinger } from "./webfinger"
-import { NodeInfo } from "./nodeinfo"
 import { Intents } from "./intents"
 import { Actor } from "./as/actor"
+import { hideElement } from "./utils"
 
 type Account = {
 	id: string
@@ -18,6 +17,7 @@ const Camper = {
 	// render redraws the UX based on the current account list in localStorage
 	render: () => {
 
+		// Find the saved accounts stored for this user
 		const accounts = Camper.getSavedAccounts()
 
 		// Hide "Loading" indicators
@@ -27,28 +27,43 @@ const Camper = {
 		// Show/Hide the "Add Account" 
 		const addAccountButtons = Array.from(document.getElementsByClassName("camper-add-account")) as HTMLElement[]
 		addAccountButtons.forEach(element => {
-			element.hidden = (accounts.length >= 3)
+			const maxAccounts = parseInt(element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "3")
+			hideElement(element, accounts.length >= maxAccounts)
 			element.blur()
 		});
 
 		// Show/Hide the "Add First Account" button
 		const addFirstAccountButtons = Array.from(document.getElementsByClassName("camper-add-first-account")) as HTMLElement[]
 		addFirstAccountButtons.forEach(element => {
-			element.hidden = (accounts.length != 0)
+			hideElement(element, accounts.length != 0)
+			element.blur()
+		});
+
+		// Show/Hide elements if the user has accounts
+		const hasAccountsShow = Array.from(document.getElementsByClassName("camper-show-if-has-accounts")) as HTMLElement[]
+		hasAccountsShow.forEach(element => {
+			hideElement(element, accounts.length == 0)
+			element.blur()
+		});
+
+		// Show/Hide elements if the user has no accounts
+		const hasAccountsHide = Array.from(document.getElementsByClassName("camper-hide-if-has-accounts")) as HTMLElement[]
+		hasAccountsHide.forEach(element => {
+			hideElement(element, accounts.length != 0)
 			element.blur()
 		});
 
 		// Show/Hide the "Add Another Account" button
 		const addAnotherAccountButtons = Array.from(document.getElementsByClassName("camper-add-another-account")) as HTMLElement[]
 		addAnotherAccountButtons.forEach(element => {
-			element.hidden = (accounts.length == 0)
+			hideElement(element, accounts.length == 0)
 			element.blur()
 		});
 
 		// Show/Hide the "Remove Account" button
 		const removeAccountButtons = Array.from(document.getElementsByClassName("camper-remove-accounts")) as HTMLElement[]
 		removeAccountButtons.forEach(element => {
-			element.hidden = (accounts.length == 0)
+			hideElement(element, accounts.length == 0)
 		});
 
 		// Enable/Disable the "like" button
@@ -69,6 +84,49 @@ const Camper = {
 			element.disabled = !(accounts.some(account => account.intents.announce != ""))
 		});
 
+		// Enable/Disable the "reply" buttons
+		const replyButtons = Array.from(document.getElementsByClassName("camper-btn-reply")) as HTMLButtonElement[]
+		replyButtons.forEach(element => {
+			element.disabled = !(accounts.some(account => account.intents.create != ""))
+		});
+
+		// Add account names to the UX
+		const accountNameElements = Array.from(document.getElementsByClassName("camper-account-name")) as HTMLElement[]
+		accountNameElements.forEach(element => {
+			const account = accounts[0]
+			if (account != undefined) {
+				element.innerText = account.name
+			}
+		});
+
+		// Add account images to the UX
+		const accountImageElements = Array.from(document.getElementsByClassName("camper-account-image")) as HTMLImageElement[]
+		accountImageElements.forEach(element => {
+			const account = accounts[0]
+			if (account != undefined) {
+				element.src = account.iconUrl
+				element.hidden = false
+			} else {
+				element.src = ""
+				element.hidden = true
+			}
+		});
+
+		// Attach event handlers to all "account" forms
+		const accountForms = Array.from(document.querySelectorAll("form.camper-form")) as HTMLFormElement[]
+		accountForms.forEach(form => {
+			form.onsubmit = (event: SubmitEvent) => {
+
+				// Halt the Event
+				event.preventDefault();
+				event.cancelBubble = true;
+
+				// Use the provided handle to retrieve the WebFinger and ActivityIntents metadata.
+				const fediverseHandle = form.elements.namedItem("username") as HTMLInputElement
+				Camper.addAccount(fediverseHandle.value)
+			}
+		})
+
 		// Draw the account list
 		const accountLists = Array.from(document.getElementsByClassName("camper-accounts")) as HTMLElement[]
 		accountLists.forEach(element => {
@@ -79,8 +137,14 @@ const Camper = {
 				return
 			}
 
-			const accountListHTML = accounts.map(account => `
-				<div class="camper-account" onclick="Camper.doIntent(this, '${account.username}')">
+			// See if this element has a max-accounts attribute
+			const maxAccountsString = element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "3"
+			const maxAccounts = parseInt(maxAccountsString)
+
+			const accountListHTML = accounts
+				.slice(0, maxAccounts)
+				.map(account => `
+				<div id="camper-account-${account.id}" class="camper-account" onclick="Camper.doIntent(this, '${account.username}')">
 					<img src="${account.iconUrl}" class="camper-account-icon">
 					<div class="camper-account-info">
 						<div class="camper-account-name">${account.name}</div>
@@ -94,43 +158,6 @@ const Camper = {
 			element.hidden = false
 		})
 	},
-
-	doIntent: (element: HTMLElement, username: string) => {
-		const parent = element.parentElement!
-		const dataset = parent.dataset
-
-		const intentName = parent.getAttribute("data-intent")
-
-		if (intentName == null) {
-			console.error("Unable to determine intent for clicked element. Please ensure the element has a 'data-camper-intent' attribute.")
-			return
-		}
-
-		const accounts = Camper.getSavedAccounts()
-		const account = accounts.find(account => account.username.toLowerCase() == username.toLowerCase())
-
-		if (account == null) {
-			return
-		}
-
-		var intentTemplate = account.intents[intentName as keyof IntentsResult]
-		const matches = intentTemplate.match(/\{[^}]+\}/g) || []
-		const placeholders = matches.map(placeholder => placeholder.slice(1, -1))
-
-		for (const placeholder of placeholders) {
-			var value = parent.getAttribute("data-" + placeholder) || ""
-			value = encodeURIComponent(value)
-			intentTemplate = intentTemplate.replaceAll("{" + placeholder + "}", value)
-		}
-
-		if (intentTemplate = "") {
-			alert("The account you selected does not support this action.")
-			return
-		}
-
-		window.open(intentTemplate, "_blank", "height=750,width=600")
-	},
-
 	// addAccount adds a new account to the list and redraws the UX
 	addAccount: async (username: string) => {
 
@@ -187,6 +214,11 @@ const Camper = {
 
 		// Redraw the UX
 		Camper.render()
+
+		const newElement = document.getElementById("camper-account-" + actorId)
+		if (newElement != null) {
+			newElement.click()
+		}
 	},
 
 	// removeAccount removes an account from the list and redraws the UX
@@ -229,6 +261,78 @@ const Camper = {
 
 		return JSON.parse(accountsString) as Account[] || []
 	},
+
+	// doIntent executes the Activity Intent for a selected account (using the data elements in that node)
+	doIntent: (element: HTMLElement, username: string = "") => {
+
+		const parent = element.parentElement!
+
+		// Default intent attribute values
+		if (parent.getAttribute("data-intent") == null) {
+			parent.setAttribute("data-intent", "follow")
+		}
+
+		if (parent.getAttribute("data-on-success") == null) {
+			parent.setAttribute("data-on-success", "(close)")
+		}
+
+		if (parent.getAttribute("data-on-cancel") == null) {
+			parent.setAttribute("data-on-cancel", "(close)")
+		}
+
+		// Retrieve intent values from the element's attributes
+		const intentName = parent.getAttribute("data-intent")
+
+		if (intentName == null) {
+			console.error("Unable to determine intent for clicked element. Please ensure the element has a 'data-camper-intent' attribute.")
+			return
+		}
+
+		// Find accounts saved for this user
+		const accounts = Camper.getSavedAccounts()
+
+		if (accounts.length == 0) {
+			alert("No accounts configured. Please add an account to continue.")
+			return
+		}
+
+		let account = accounts.find(account => account.username.toLowerCase() == username.toLowerCase())
+
+		if (account == undefined) {
+			account = accounts[0]!
+		}
+
+		// Find the intent template for the selected account and replace placeholders
+		var intentTemplate = account.intents[intentName as keyof IntentsResult]
+		const matches = intentTemplate.match(/\{[^}]+\}/g) || []
+		const placeholders = matches.map(placeholder => placeholder.slice(1, -1))
+
+		console.log("Found intent template: " + intentTemplate)
+		console.log("Placeholders:", placeholders)
+		console.log("Dataset", parent.dataset)
+
+		for (const placeholder of placeholders) {
+			var value = parent.getAttribute("data-" + placeholder) || ""
+			value = encodeURIComponent(value)
+			intentTemplate = intentTemplate.replaceAll("{" + placeholder + "}", value)
+		}
+
+		if (intentTemplate == "") {
+			alert("The account you selected does not support this action.")
+			return
+		}
+
+		console.log("Opening intent URL: " + intentTemplate)
+
+		// If present, trigger the event handler to hide the camper interface
+		parent.dispatchEvent(new CustomEvent("camper-hide"))
+
+		// Open the Activity Intent in a pop-up window.
+		window.open(intentTemplate, "_blank", "height=750,width=600")
+	}
 }
 
+// Draw the UX for the first time on page load
 Camper.render()
+
+console.log("CamperJS loaded", Camper)
