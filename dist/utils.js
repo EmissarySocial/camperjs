@@ -1,2 +1,1 @@
-function c(t){switch(t){case"localhost":case"127.0.0.1":return"http://"}return"https://"}function r(t){return(t.match(/\{([^}]+)\}/g)||[]).map(e=>e.slice(1,-1))}export{r as getPlaceholders,c as guessProtocol};
-//# sourceMappingURL=utils.js.map
+function n(t){switch(t){case"localhost":case"127.0.0.1":return"http://"}return"https://"}function o(t){return(t.match(/\{([^}]+)\}/g)||[]).map(s=>s.slice(1,-1))}function c(t,e){e?(t.hidden=!0,t.style.display="none"):(t.hidden=!1,t.style.display="")}export{o as getPlaceholders,n as guessProtocol,c as hideElement};
