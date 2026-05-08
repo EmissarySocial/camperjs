@@ -22,67 +22,71 @@ const Camper = {
 
 		// Hide "Loading" indicators
 		const loadingIndicators = Array.from(document.getElementsByClassName("camper-loading")) as HTMLElement[]
-		loadingIndicators.forEach(element => element.hidden = true);
+		loadingIndicators.forEach(element => hideElement(element, true));
 
-		// Show/Hide the "Add Account" 
+		// Toggles content when any account can be added
 		const addAccountButtons = Array.from(document.getElementsByClassName("camper-add-account")) as HTMLElement[]
 		addAccountButtons.forEach(element => {
-			const maxAccounts = parseInt(element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "3")
+			const maxAccounts = Camper.maxAccounts(element)
 			hideElement(element, accounts.length >= maxAccounts)
 			element.blur()
 		});
 
-		// Show/Hide the "Add First Account" button
+		// Toggles content when the FIRST account can be added
 		const addFirstAccountButtons = Array.from(document.getElementsByClassName("camper-add-first-account")) as HTMLElement[]
 		addFirstAccountButtons.forEach(element => {
 			hideElement(element, accounts.length != 0)
 			element.blur()
 		});
 
-		// Show/Hide elements if the user has accounts
+		// Toggles content when the 2+ account can be added
+		const addAnotherAccountButtons = Array.from(document.getElementsByClassName("camper-add-another-account")) as HTMLElement[]
+		addAnotherAccountButtons.forEach(element => {
+			const maxAccounts = Camper.maxAccounts(element)
+			hideElement(element, accounts.length >= maxAccounts || accounts.length == 0)
+			element.blur()
+		});
+
+		// Shows content content when the user has at least one account saved
 		const hasAccountsShow = Array.from(document.getElementsByClassName("camper-show-if-has-accounts")) as HTMLElement[]
 		hasAccountsShow.forEach(element => {
 			hideElement(element, accounts.length == 0)
 			element.blur()
 		});
 
-		// Show/Hide elements if the user has no accounts
+		// Hides content when the user has at least one account saved
 		const hasAccountsHide = Array.from(document.getElementsByClassName("camper-hide-if-has-accounts")) as HTMLElement[]
 		hasAccountsHide.forEach(element => {
 			hideElement(element, accounts.length != 0)
 			element.blur()
 		});
 
-		// Show/Hide the "Add Another Account" button
-		const addAnotherAccountButtons = Array.from(document.getElementsByClassName("camper-add-another-account")) as HTMLElement[]
-		addAnotherAccountButtons.forEach(element => {
-			hideElement(element, accounts.length == 0)
-			element.blur()
+		// Wire event handlers into intent buttons
+		const intentButtons = Array.from(document.getElementsByClassName("camper-intent-button")) as HTMLButtonElement[]
+		intentButtons.forEach(element => {
+
+			// Collect the intent name from the element's data
+			const intentName = element.getAttribute("data-intent")
+			if (intentName == undefined) {
+				console.log("Unable to wire element because [data-intent] property is not set.", element)
+				return
+			}
+
+			// Add event handler
+			element.onclick = () => {
+				Camper.doIntent(element)
+			}
+
+			// Disable unsupported buttons
+			console.log("Checking intent support for", intentName)
+			const hasIntentTemplate = accounts.some(account => {
+				console.log("Checking account", account.username, "for intent template", account.intents)
+				return account.intents[intentName as keyof IntentsResult] != undefined
+			})
+			console.log(hasIntentTemplate)
+			element.disabled = !hasIntentTemplate
 		});
 
-		// Show/Hide the "Remove Account" button
-		const removeAccountButtons = Array.from(document.getElementsByClassName("camper-remove-accounts")) as HTMLElement[]
-		removeAccountButtons.forEach(element => {
-			hideElement(element, accounts.length == 0)
-		});
-
-		// Enable/Disable the "like" button
-		const likeButtons = Array.from(document.getElementsByClassName("camper-btn-like")) as HTMLButtonElement[]
-		likeButtons.forEach(element => {
-			element.disabled = !(accounts.some(account => account.intents.like != ""))
-		});
-
-		// Enable/Disable the "share" button
-		const shareButtons = Array.from(document.getElementsByClassName("camper-btn-share")) as HTMLButtonElement[]
-		shareButtons.forEach(element => {
-			element.disabled = !(accounts.some(account => account.intents.create != ""))
-		});
-
-		// Enable/Disable the "announce" button
-		const announceButtons = Array.from(document.getElementsByClassName("camper-btn-announce")) as HTMLButtonElement[]
-		announceButtons.forEach(element => {
-			element.disabled = !(accounts.some(account => account.intents.announce != ""))
-		});
 
 		// Enable/Disable the "reply" buttons
 		const replyButtons = Array.from(document.getElementsByClassName("camper-btn-reply")) as HTMLButtonElement[]
@@ -90,7 +94,7 @@ const Camper = {
 			element.disabled = !(accounts.some(account => account.intents.create != ""))
 		});
 
-		// Add account names to the UX
+		// Inserts account names to the UX
 		const accountNameElements = Array.from(document.getElementsByClassName("camper-account-name")) as HTMLElement[]
 		accountNameElements.forEach(element => {
 			const account = accounts[0]
@@ -99,7 +103,7 @@ const Camper = {
 			}
 		});
 
-		// Add account images to the UX
+		// Inserts account images to the UX
 		const accountImageElements = Array.from(document.getElementsByClassName("camper-account-image")) as HTMLImageElement[]
 		accountImageElements.forEach(element => {
 			const account = accounts[0]
@@ -119,7 +123,7 @@ const Camper = {
 
 				// Halt the Event
 				event.preventDefault();
-				event.cancelBubble = true;
+				event.stopPropagation();
 
 				// Use the provided handle to retrieve the WebFinger and ActivityIntents metadata.
 				const fediverseHandle = form.elements.namedItem("username") as HTMLInputElement
@@ -138,8 +142,7 @@ const Camper = {
 			}
 
 			// See if this element has a max-accounts attribute
-			const maxAccountsString = element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "3"
-			const maxAccounts = parseInt(maxAccountsString)
+			const maxAccounts = Camper.maxAccounts(element)
 
 			const accountListHTML = accounts
 				.slice(0, maxAccounts)
@@ -265,34 +268,11 @@ const Camper = {
 	// doIntent executes the Activity Intent for a selected account (using the data elements in that node)
 	doIntent: (element: HTMLElement, username: string = "") => {
 
-		const parent = element.parentElement!
-
-		// Default intent attribute values
-		if (parent.getAttribute("data-intent") == null) {
-			parent.setAttribute("data-intent", "follow")
-		}
-
-		if (parent.getAttribute("data-on-success") == null) {
-			parent.setAttribute("data-on-success", "(close)")
-		}
-
-		if (parent.getAttribute("data-on-cancel") == null) {
-			parent.setAttribute("data-on-cancel", "(close)")
-		}
-
-		// Retrieve intent values from the element's attributes
-		const intentName = parent.getAttribute("data-intent")
-
-		if (intentName == null) {
-			console.error("Unable to determine intent for clicked element. Please ensure the element has a 'data-camper-intent' attribute.")
-			return
-		}
-
 		// Find accounts saved for this user
 		const accounts = Camper.getSavedAccounts()
 
 		if (accounts.length == 0) {
-			alert("No accounts configured. Please add an account to continue.")
+			alert("Please add an account to continue.")
 			return
 		}
 
@@ -302,17 +282,27 @@ const Camper = {
 			account = accounts[0]!
 		}
 
-		// Find the intent template for the selected account and replace placeholders
+		// Find the intent to execute
+		const parent = element.parentElement!
+		const intentName = element.getAttribute("data-intent") || parent.getAttribute("data-intent") || "follow"
+
+		// Build the intent template
 		var intentTemplate = account.intents[intentName as keyof IntentsResult]
 		const matches = intentTemplate.match(/\{[^}]+\}/g) || []
 		const placeholders = matches.map(placeholder => placeholder.slice(1, -1))
 
-		console.log("Found intent template: " + intentTemplate)
-		console.log("Placeholders:", placeholders)
-		console.log("Dataset", parent.dataset)
-
+		// Replace all placeholders
 		for (const placeholder of placeholders) {
-			var value = parent.getAttribute("data-" + placeholder) || ""
+			var value = element.getAttribute("data-" + placeholder) || parent.getAttribute("data-" + placeholder) || ""
+
+			// Workflow default values
+			if (value == "") {
+				if ((placeholder == "on-success") || (placeholder == "on-cancel")) {
+					value = "(close)"
+				}
+			}
+
+			// Insert the value into the template
 			value = encodeURIComponent(value)
 			intentTemplate = intentTemplate.replaceAll("{" + placeholder + "}", value)
 		}
@@ -322,13 +312,15 @@ const Camper = {
 			return
 		}
 
-		console.log("Opening intent URL: " + intentTemplate)
-
 		// If present, trigger the event handler to hide the camper interface
 		parent.dispatchEvent(new CustomEvent("camper-hide"))
 
 		// Open the Activity Intent in a pop-up window.
 		window.open(intentTemplate, "_blank", "height=750,width=600")
+	},
+
+	maxAccounts: (element: HTMLElement) => {
+		return parseInt(element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "1")
 	}
 }
 

@@ -30,6 +30,7 @@ export type IntentsResult = {
 	follow: string
 	like: string
 	object: string
+	reply: string
 }
 
 export type Link = {

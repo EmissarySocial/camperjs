@@ -13,7 +13,8 @@ export class Intents {
 			create: "",
 			follow: "",
 			like: "",
-			object: ""
+			object: "",
+			reply: "",
 		}
 
 		// Safely find the array of links
@@ -76,6 +77,13 @@ export class Intents {
 
 			if (result.announce == "") {
 				result.announce = result.object
+			}
+
+			// Magic value for "reply" intents
+			if (result.create.includes("{inReplyTo}")) {
+				result.reply = result.create
+			} else {
+				result.reply = result.object
 			}
 
 			return result
