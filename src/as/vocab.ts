@@ -38,12 +38,6 @@ export const ObjectTypeImage = "Image"
 
 export const ObjectTypeNote = "Note"
 
-export const ObjectTypeMlsPrivateMessage = "mls:PrivateMessage"
-
-export const ObjectTypeMlsGroupInfo = "mls:GroupInfo"
-
-export const ObjectTypeMlsWelcome = "mls:Welcome"
-
 // ActivityVocabulary Object Properties
 
 export const PropertyActor = "actor"
