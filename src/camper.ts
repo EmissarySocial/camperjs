@@ -2,7 +2,7 @@ import { type IntentsResult } from "./types"
 import { WebFinger } from "./webfinger"
 import { Intents } from "./intents"
 import { Actor } from "./as/actor"
-import { hideElement } from "./utils"
+import { hideElement, safeText, safeURL, safeAttr } from "./utils"
 
 type Account = {
 	id: string
@@ -144,16 +144,22 @@ const Camper = {
 			// See if this element has a max-accounts attribute
 			const maxAccounts = Camper.maxAccounts(element)
 
+			// Account fields come from remote, untrusted actor documents, so every
+			// interpolated value is neutralized for its context: id/username in
+			// attributes via safeAttr, name/username in element text via safeText,
+			// and iconUrl scheme-checked via safeURL. The username is carried in a
+			// data-username attribute rather than concatenated into inline JS, so
+			// the click handlers read it from the dataset instead of a JS string.
 			const accountListHTML = accounts
 				.slice(0, maxAccounts)
 				.map(account => `
-				<div id="camper-account-${account.id}" class="camper-account" onclick="Camper.doIntent(this, '${account.username}')">
-					<img src="${account.iconUrl}" class="camper-account-icon">
+				<div id="camper-account-${safeAttr(account.id)}" class="camper-account" data-username="${safeAttr(account.username)}" onclick="Camper.doIntent(this, this.dataset.username || '')">
+					<img src="${safeURL(account.iconUrl)}" class="camper-account-icon">
 					<div class="camper-account-info">
-						<div class="camper-account-name">${account.name}</div>
-						<div class="camper-account-username">${account.username}</div>
+						<div class="camper-account-name">${safeText(account.name)}</div>
+						<div class="camper-account-username">${safeText(account.username)}</div>
 					</div>
-					<button class="camper-account-remove-button" onclick="Camper.removeAccount('${account.username}')">Remove</button>
+					<button class="camper-account-remove-button" onclick="Camper.removeAccount(this.closest('.camper-account').dataset.username || '')">Remove</button>
 				</div>
 			`).join("")
 

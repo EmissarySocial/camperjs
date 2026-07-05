@@ -5,10 +5,10 @@ import { NodeInfo } from "./nodeinfo"
 export class Intents {
 
 	// getIntentsMap retrieves the available Activity Intents templates for the provided data
-	static getIntentsMap = async (server: string, webfingerResult: WebFingerResult) => {
+	static readonly getIntentsMap = async (server: string, webfingerResult: WebFingerResult) => {
 
-		var found = false
-		var result: IntentsResult = {
+		let found = false
+		let result: IntentsResult = {
 			announce: "",
 			create: "",
 			follow: "",
@@ -23,8 +23,8 @@ export class Intents {
 		// Scan each link for known intents
 		for (const link of links) {
 
-			var relation = link.rel || ""
-			var template = link.template || link.href || ""
+			let relation = link.rel || ""
+			let template = link.template || link.href || ""
 
 			switch (relation.toLowerCase()) {
 

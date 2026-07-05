@@ -8,7 +8,7 @@
 	"main": "camper.js",
 	"scripts": {
 		"start": "esbuild src/*.ts --watch --bundle --format=esm --minify --outdir=./dist",
-		"develop": "esbuild src/*.ts --watch --bundle --format=esm --outdir=../emissary/_embed/templates/theme-global/resources/camperjs",
+		"4emissary": "esbuild src/*.ts --watch --bundle --format=esm --outdir=../emissary/_embed/templates/theme-global/resources/camperjs",
 		"test": "vitest"
 	},
 	"dependencies": {},
