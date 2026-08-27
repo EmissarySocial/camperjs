@@ -66,7 +66,7 @@ const Camper = {
 		intentButtons.forEach(element => {
 
 			// Collect the intent name from the element's data
-			const intentName = element.getAttribute("data-intent")
+			const intentName = element.dataset.intent
 			if (intentName == undefined) {
 				console.log("Unable to wire element because [data-intent] property is not set.", element)
 				return
@@ -183,7 +183,7 @@ const Camper = {
 		}
 
 		// Load the current account list.
-		var accounts = Camper.getSavedAccounts()
+		const accounts = Camper.getSavedAccounts()
 
 		// Exit if the username is already in the list.
 		if (accounts.some(account => account.username.toLowerCase() == username.toLowerCase())) {
@@ -242,7 +242,7 @@ const Camper = {
 		}
 
 		// Get all accounts from localStorage
-		var accounts = Camper.getSavedAccounts()
+		let accounts = Camper.getSavedAccounts()
 
 		// Remove the named account
 		accounts = accounts.filter(account => account.username.toLowerCase() != username.toLowerCase())
@@ -290,16 +290,16 @@ const Camper = {
 
 		// Find the intent to execute
 		const parent = element.parentElement!
-		const intentName = element.getAttribute("data-intent") || parent.getAttribute("data-intent") || "follow"
+		const intentName = element.dataset.intent || parent.dataset.intent || "follow"
 
 		// Build the intent template
-		var intentTemplate = account.intents[intentName as keyof IntentsResult]
+		let intentTemplate = account.intents[intentName as keyof IntentsResult]
 		const matches = intentTemplate.match(/\{[^}]+\}/g) || []
 		const placeholders = matches.map(placeholder => placeholder.slice(1, -1))
 
 		// Replace all placeholders
 		for (const placeholder of placeholders) {
-			var value = element.getAttribute("data-" + placeholder) || parent.getAttribute("data-" + placeholder) || ""
+			let value = element.dataset[placeholder] || parent.dataset[placeholder] || ""
 
 			// Workflow default values
 			if (value == "") {
@@ -326,9 +326,28 @@ const Camper = {
 	},
 
 	maxAccounts: (element: HTMLElement) => {
-		return parseInt(element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "1")
+		return Number.parseInt(element.getAttribute("max-accounts") || element.getAttribute("data-max-accounts") || "1")
 	}
 }
+
+// RULE: Camper must be published as an explicit property of `window`, never left as
+// a bare top-level binding.  Two callers resolve it in GLOBAL scope: the inline
+// `onclick="Camper.…"` handlers in the account markup that render() generates, and
+// host pages that call Camper.render() / Camper.hasSavedAccounts() from their own
+// <script> blocks.  A top-level binding reaches those callers only by accident -- it
+// works solely because this bundle currently happens to be loaded as a classic
+// script, and it disappears entirely under --minify, which renames the binding to a
+// single letter while leaving the name inside the generated HTML *string* untouched.
+// The result is markup calling a function that no longer exists, with no build error
+// and no test failure.  Assigning through a property key is immune: the key is a
+// string literal, so no minifier can rewrite it.
+declare global {
+	interface Window {
+		Camper: typeof Camper
+	}
+}
+
+window.Camper = Camper
 
 // Draw the UX for the first time on page load
 Camper.render()
